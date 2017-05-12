@@ -1,0 +1,15 @@
+- hosts: web_servers
+  become: yes
+  become_user: root
+
+  roles:
+    - role: common
+      tags: common
+      when: ansible_distribution == "CentOS"
+    - role: mariadb
+      tags: mariadb
+    - role: application
+      tags: app
+    - role: nginx
+      tags: nginx
+

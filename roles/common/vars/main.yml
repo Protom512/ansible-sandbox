@@ -1,0 +1,7 @@
+---
+# vars file for common
+required_packages:     
+  - "@Development Tools"
+new_users: 
+  - "user01"
+  - "www"

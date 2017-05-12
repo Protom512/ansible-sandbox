@@ -1,0 +1,43 @@
+---
+- name: delete instance
+  hosts: localhost
+  connection: local
+
+  vars_prompt:
+    - name: "server_name"
+      prompt: "input server name"
+      private: no
+  
+  vars:
+    ansible_python_interpreter: "/home/ansible/venv/bin/python"
+  
+
+  tasks:
+    - name: delete Instance
+      os_server:
+        cloud: mycloud
+        name: "{{ hostvars[server_name].ansible_host|regex_replace('\\.','-') }}"
+        state: absent
+        meta:
+          instance_name_tag: "{{ server_name }}"
+      register: instance_info
+
+    - name: register auth key
+      os_keypair:
+        cloud: mycloud
+        name: "key_{{ server_name }}"
+        state: absent
+
+    - name: wait for
+      wait_for: 
+        state: stopped
+        host: "{{ hostvars[server_name].ansible_host }}"
+        port: 22
+      register: instance_status
+
+    - name: delete instance to inventory
+      lineinfile:
+        state: absent
+        dest: "{{ inventory_file }}"
+        line: "^{{ server_name }} ansible_host="
+      when: instance_status.state=="stopped"

@@ -1,0 +1,82 @@
+---
+# tasks file for common
+
+- name: Update yum packages
+  yum:
+    name: "{{ item }}"
+    state: latest
+    update_cache: yes
+  with_items:
+    - "epel-release"
+    - "*"
+    - "git" 
+
+- name: Install the required packages
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ required_packages }}"
+
+- name: Deploy hosts file
+  template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Create new users
+  user:
+    name: "{{ item }}"
+    shell: /bin/bash
+    home: "/home/{{ item }}"
+    state : present
+  with_items: "{{ new_users }}"
+  notify: Distribute authorised key
+
+- name: change the hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: set timezone to Asia/Tokyo
+  timezone:
+    name: Asia/Tokyo
+
+- name: create system group ops
+  group:
+    name: ops
+    system: yes
+    state: present
+
+- name: change user01 to group ops
+  user:
+    name: user01
+    group: ops
+    append: yes
+
+#- name: create file 
+#  file:
+#    path: /etc/sudoers.d/ops
+#    state: touch
+
+- name: add sudoers permission
+#  lineinfile:
+  template:
+    src: group_sudoers.j2
+    dest: "/etc/sudoers.d/{{ops_group}}"
+    owner: root
+    group: root
+    mode: 0400
+#    state: present
+#    regexp: '^ops ALL='
+#    line: 'ops ALL=(ALL) NOPASSWD: ALL'
+    validate: 'visudo -cf %s'
+
+- name: change chrony conf
+  lineinfile:
+    dest: /etc/chrony.conf
+    state: present
+    regexp: '^server ntp.nict'
+    line: 'server ntp.nict.jp iburst'
+    backup: yes
+  notify: restart chrony

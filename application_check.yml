@@ -1,0 +1,36 @@
+- hosts: web_servers
+  become: yes
+  become_user: root
+  vars:
+    mysql_password: "{{vault_mysql_password}}" 
+  tasks:
+    - name: check_ports
+      wait_for:
+        host: "{{ inventory_hostname }}" 
+        port: "{{item}}" 
+      with_items:
+        - 80
+        - 5000
+        - 3306
+    - name: uri
+      uri:
+        url: http://{{ ansible_host }}/host/
+        return_content: yes
+      register: result
+
+    - name: print uri result
+      debug:
+        var: result
+    
+    - name: chekck the uri result
+      assert:
+        that:
+          - "'{{inventory_hostname}}' in result.content" 
+ 
+    - name: backup
+      mysql_db:
+        name: myapp_db
+        login_user: www
+        login_password: "{{ mysql_password }}"
+        state: dump
+        target: /tmp/backup.sql.bz2
